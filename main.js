@@ -5,23 +5,35 @@ const fs = require('fs')
 async function main(user, pw) {
     let { browser, context, page } = await login(user, pw)
     await loadCookies(context)
-    await console.log(page.innterHTML('body'))
+    const links = getClassLinks(page)
     // const classes = await getClasses(page)
     await sleep(100)
     await browser.close()
 }
 
+async function getClassLinks(page){
+    await sleep(5)
+    const frames = await page.frames()
+    // const html = await frames[0].outerHTML('body')
+    const html = await page.$eval('body', (e, suffix) => e.outerHTML);
+    console.log(html)
+    fs.writeFileSync('frame1.html',html)
+    // const splits = html.split('<a class="d2l-focusable" href="')
+    // console.log(splits.length)
+}
+
 async function getClasses(page) {
     // 2202 - Summer 2020
     // await play.xpathClick(page,'//div[text()="2202 - Summer 2020"]')
+    if (page.url().indexOf('home') < 0) await page.goto('https://d2l.arizona.edu')
     let count = 0
     while (true) {
         if (page.url().indexOf('home') < 0) await clickHome(page)
-        await page.waitForSelector('.homepage-col-8 #d2l_1_6_542')
-        await page.click('.homepage-col-8 #d2l_1_6_542')
-        await play.tab(2 + count * 2)
+        // await page.waitForSelector('.homepage-col-8 #d2l_1_6_542')
+        // await page.click('.homepage-col-8 #d2l_1_6_542')
+        await play.tab(15 + (count * 2))
         await page.keyboard.press('Enter')
-        if (await isClass(page))
+        if (await isClass(page))console.log('true')
     }
 
     // await sleep(5)
@@ -38,6 +50,13 @@ async function getClasses(page) {
 }
 
 async function isClass(page){
+    for (let i = 0; i < 5; i ++){
+        const html = await page.innerHTML('body')
+        if (html.indexOf('Course Home') > 0) return true
+        await sleep(1)
+    }
+    return false
+
 }
 
 async function clickHome(page) {
@@ -53,7 +72,7 @@ async function login(user, pw) {
     await loadCookies(context)
     // if logged in to d2l, then it returns browser info
     if (await checkLogin(page)) return { browser: browser, context: context, page: page }
-    // if not, it opens a headfule browser and logs in
+    // if not, it opens a headful browser and logs in
     await browser.close()
     await headfulLogin(user, pw)
     // returns headless browser
@@ -86,7 +105,6 @@ async function checkLogin(page) {
 async function saveCookies(context) {
     await sleep(5)
     const cookies = await context.cookies()
-    console.log(cookies)
     fs.writeFileSync('cookies.json', JSON.stringify(cookies))
 }
 
