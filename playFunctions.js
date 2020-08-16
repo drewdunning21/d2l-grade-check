@@ -40,3 +40,4 @@ async function tab(page,amnt){
         await page.keyboard.press('Tab')
     }
 }
+exports.tab = tab

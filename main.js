@@ -5,58 +5,64 @@ const fs = require('fs')
 async function main(user, pw) {
     let { browser, context, page } = await login(user, pw)
     await loadCookies(context)
-    const links = getClassLinks(page)
-    // const classes = await getClasses(page)
+    let links = await getClassLinks(page)
+    console.log(links)
+    await checkClasses(page, links)
     await sleep(100)
     await browser.close()
 }
 
-async function getClassLinks(page){
-    await sleep(5)
-    const frames = await page.frames()
-    // const html = await frames[0].outerHTML('body')
-    const html = await page.$eval('body', (e, suffix) => e.outerHTML);
-    console.log(html)
-    fs.writeFileSync('frame1.html',html)
-    // const splits = html.split('<a class="d2l-focusable" href="')
-    // console.log(splits.length)
-}
-
-async function getClasses(page) {
-    // 2202 - Summer 2020
-    // await play.xpathClick(page,'//div[text()="2202 - Summer 2020"]')
-    if (page.url().indexOf('home') < 0) await page.goto('https://d2l.arizona.edu')
-    let count = 0
-    while (true) {
-        if (page.url().indexOf('home') < 0) await clickHome(page)
-        // await page.waitForSelector('.homepage-col-8 #d2l_1_6_542')
-        // await page.click('.homepage-col-8 #d2l_1_6_542')
-        await play.tab(15 + (count * 2))
-        await page.keyboard.press('Enter')
-        if (await isClass(page))console.log('true')
+async function checkClasses(page, links) {
+    console.log('Checking grades')
+    for (let i = 0; i < links.length; i++) {
+        // await page.goto('https://d2l.arizona.edu/d2l/home/' + links[i])
+        // await checkGrades(page)
+        await checkGrades(page, links[i])
     }
-
-    // await sleep(5)
-    // const frames = await page.frames()
-    // console.log(frames.length)
-    // // d2l-card-container d2l-visible-on-ancestor-target d2l-card-footer-hidden
-    // let bin = await page.$$('xpath=//div[@class="homepage-col-8"]')
-    // console.log(bin)
-    // const classes = bin[0].$$('//a[@class="d2l-focusable"]')
-    // console.log(classes.length)
-    // for (let i = 0; i < classes.length; i++) {
-    //     console.log(classes[i].getAttribute('href'))
-    // }
+    console.log('Done checking grades')
 }
 
-async function isClass(page){
-    for (let i = 0; i < 5; i ++){
+async function checkGrades(page, link) {
+    const url = 'https://d2l.arizona.edu/d2l/lms/grades/my_grades/main.d2l?ou=' + link
+    await page.goto(url)
+    await page.waitForSelector(path, { timeout: timeout })
+    const handles = await page.$$('xpath=' + path)
+    // page.goto(url)
+    // const resp = await page.waitForResponse(url)
+    // const buf = (await resp.body())
+    // console.log(buf.toString())
+
+    // await play.xpathClick(page,'//a[text()="Grades"]')
+    // const html = await page.innterHTML('body')
+    // fs.writeFileSync('htmltest.html',html)
+}
+
+async function getClassLinks(page) {
+    let classes = []
+    page.on('request', async request => {
+        let url = request.url()
+        if (url.indexOf('4074172c-') > 0 && url.split('/').length == 4) {
+            const finalResponse = await page.waitForResponse(url)
+            const resp = await finalResponse.json()
+            try {
+                if (resp.properties.endDate.indexOf('08-27') > 0) {
+                    console.log(resp.properties.name)
+                    classes.push(url.split('/')[3])
+                }
+            } catch {}
+        }
+    })
+    await sleep(2)
+    return classes
+}
+
+async function isClass(page) {
+    for (let i = 0; i < 5; i++) {
         const html = await page.innerHTML('body')
         if (html.indexOf('Course Home') > 0) return true
         await sleep(1)
     }
     return false
-
 }
 
 async function clickHome(page) {
